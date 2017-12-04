@@ -19,6 +19,7 @@ using Cake.Scripting.Abstractions.Models;
 using Cake.Scripting.CodeGen.Generators;
 using Cake.Scripting.IO;
 using Cake.Scripting.Reflection.Emitters;
+using Mono.Cecil;
 
 namespace Cake.Scripting.CodeGen
 {
@@ -32,6 +33,7 @@ namespace Cake.Scripting.CodeGen
         private readonly IScriptProcessor _processor;
         private readonly IBufferedFileSystem _fileSystem;
         private readonly IScriptAliasFinder _aliasFinder;
+        private readonly IAssemblyResolver _assemblyResolver;
         private readonly CakeMethodAliasGenerator _methodGenerator;
         private readonly CakePropertyAliasGenerator _propertyGenerator;
 
@@ -52,6 +54,7 @@ namespace Cake.Scripting.CodeGen
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _processor = processor ?? throw new ArgumentNullException(nameof(processor));
             _aliasFinder = aliasFinder ?? throw new ArgumentNullException(nameof(fileSystem));
+            _assemblyResolver = new DefaultAssemblyResolver();
 
             _analyzer = new ScriptAnalyzer(_fileSystem, _environment, _log, loadDirectiveProviders);
 
@@ -104,7 +107,20 @@ namespace Cake.Scripting.CodeGen
             _log.Verbose("Adding references...");
             var cakeRoot = GetCakePath(GetToolPath(_environment.WorkingDirectory));
             var references = new HashSet<FilePath>(GetDefaultReferences(cakeRoot));
-            references.AddRange(result.References.Select(r => new FilePath(r)));
+
+            foreach (var reference in result.References)
+            {
+                var referencePath = new FilePath(reference);
+                if (!_fileSystem.Exist(referencePath))
+                {
+                    var assembly = _assemblyResolver.Resolve(AssemblyNameReference.Parse(reference));
+                    references.Add(assembly.MainModule.FileName);
+                }
+                else
+                {
+                    references.Add(referencePath);
+                }
+            }
 
             // Find aliases
             _log.Verbose("Finding aliases...");

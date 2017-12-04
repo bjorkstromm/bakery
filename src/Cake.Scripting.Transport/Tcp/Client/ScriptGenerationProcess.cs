@@ -33,6 +33,9 @@ namespace Cake.Scripting.Transport.Tcp.Client
             {
                 arguments += " --verbose";
             }
+#if DEBUG
+            arguments += " --debug";
+#endif
 
             var startInfo = new ProcessStartInfo
             {

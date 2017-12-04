@@ -215,10 +215,32 @@ Task("Should-Install-Addins")
     Assert.Contains(MakeAbsolute(addin).FullPath, response.References);
 });
 
+Task("Should-Load-From-GAC")
+    .Does(() =>
+{
+    // Given
+    var fileName = $"{Guid.NewGuid()}.cake";
+    var fileChange = new FileChange
+    {
+        FileName = fileName,
+        Buffer = "#r \"System.IO.Compression.FileSystem\"",
+        FromDisk = false
+    };
+
+    // When
+    var response = service.Generate(fileChange);
+
+    // Then
+    var reference = new FilePath(System.Reflection.Assembly.Load("System.IO.Compression.FileSystem, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089").Location);
+
+    Assert.Contains(MakeAbsolute(reference).FullPath, response.References);
+});
+
 Task("Default")
-    .IsDependentOn("Should-Generate-From-File")
+    /*.IsDependentOn("Should-Generate-From-File")
     .IsDependentOn("Should-Generate-From-Buffer")
     .IsDependentOn("Should-Generate-With-Line-Changes")
-    .IsDependentOn("Should-Install-Addins");
+    .IsDependentOn("Should-Install-Addins")*/
+    .IsDependentOn("Should-Load-From-GAC");
 
 RunTarget("Default");
